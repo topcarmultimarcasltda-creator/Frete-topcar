@@ -3,7 +3,7 @@
   - Versão SEGURA (lê do Environment)
   - Usa BrasilAPI (para CEPs)
   - Usa GRAPHOPPER (para Distância)
-  - *** CORRIGIDO: Formato de pedido para a GraphHopper API ***
+  - *** CORRIGIDO: Formato do pedido para "locations" ***
 */
 const express = require('express');
 const fetch = require('node-fetch');
@@ -48,7 +48,7 @@ app.get('/api/cep', async (req, res) => {
     }
 });
 
-/* Endpoint 2: Cálculo de Frete (*** FORMATO CORRIGIDO ***) */
+/* Endpoint 2: Cálculo de Frete (*** FORMATO CORRIGIDO DE VOLTA PARA "LOCATIONS" ***) */
 app.post('/api/calcular-frete', async (req, res) => {
     const { destinoCoords, cupom } = req.body; // Vem como [Lon, Lat]
     
@@ -58,12 +58,19 @@ app.post('/api/calcular-frete', async (req, res) => {
 
     try {
         // **** CORREÇÃO ****
-        // Vamos usar o formato "points" que é mais simples e direto.
-        // O formato [Lon, Lat] que o cliente envia é o que o GraphHopper espera.
+        // O formato correto da Matrix API usa "locations" com objetos {lat, lon}
         const body = {
-            "points": [
-                FRETE_COORDENADAS_ORIGEM, // Ponto de Origem [Lon, Lat]
-                destinoCoords             // Ponto de Destino [Lon, Lat]
+            "locations": [
+                // Origem:
+                {
+                    "lat": FRETE_COORDENADAS_ORIGEM[1], // Latitude
+                    "lon": FRETE_COORDENADAS_ORIGEM[0]  // Longitude
+                },
+                // Destino:
+                {
+                    "lat": destinoCoords[1], // Latitude
+                    "lon": destinoCoords[0]  // Longitude
+                }
             ],
             "out_arrays": ["distances", "times"], // Pedimos distâncias e tempos
             "vehicle": "car" // Para carro
