@@ -2,7 +2,7 @@
   SERVER.JS (TUDO-EM-UM)
   - Versão SEGURA (lê do Environment)
   - Usa BrasilAPI (para CEPs)
-  - *** USA MAPBOX (para Distância) - MAIS ESTÁVEL ***
+  - *** USA GRAPHOPPER (para Distância) - ESTÁVEL e SEM CC ***
 */
 const express = require('express');
 const fetch = require('node-fetch');
@@ -17,9 +17,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- 2. AS CHAVES DE API (SEGURAS) ---
-// Vamos ler a nova chave do Mapbox do "cofre" do Render
-const MAPBOX_KEY = process.env.MAPBOX_KEY; 
+// Vamos ler a nova chave do GraphHopper do "cofre" do Render
+const GRAPHOPPER_KEY = process.env.GRAPHOPPER_KEY; 
 const FRETE_TAXA_POR_KM = 2.50;
+// Coordenadas de Origem [Lon, Lat]
 const FRETE_COORDENADAS_ORIGEM = [-47.49056581938401, -23.518172000706706];
 
 // --- 3. AS APIs (O "ASSISTENTE") ---
@@ -47,38 +48,58 @@ app.get('/api/cep', async (req, res) => {
     }
 });
 
-/* Endpoint 2: Cálculo de Frete (*** ATUALIZADO PARA MAPBOX ***) */
+/* Endpoint 2: Cálculo de Frete (*** ATUALIZADO PARA GRAPHHOPPER ***) */
 app.post('/api/calcular-frete', async (req, res) => {
-    const { destinoCoords, cupom } = req.body; 
+    const { destinoCoords, cupom } = req.body; // Vem como [Lon, Lat]
     
-    if (!MAPBOX_KEY) {
-        return res.status(500).json({ error: 'Erro de servidor: Chave de API (Mapbox) não configurada.' });
+    if (!GRAPHOPPER_KEY) {
+        return res.status(500).json({ error: 'Erro de servidor: Chave de API (GraphHopper) não configurada.' });
     }
 
     try {
-        // O formato do Mapbox é: /mapbox/driving/lon,lat;lon,lat
-        const origemLonLat = `${FRETE_COORDENADAS_ORIGEM[0]},${FRETE_COORDENADAS_ORIGEM[1]}`;
-        const destinoLonLat = `${destinoCoords[0]},${destinoCoords[1]}`;
-        
-        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origemLonLat};${destinoLonLat}?access_token=${MAPBOX_KEY}`;
+        // O GraphHopper Matrix API usa POST e espera formato { "locations": [...] }
+        const body = {
+            "locations": [
+                // Origem: Note que o GraphHopper quer {lat: ..., lon: ...}
+                {
+                    "lat": FRETE_COORDENADAS_ORIGEM[1], // Latitude
+                    "lon": FRETE_COORDENADAS_ORIGEM[0]  // Longitude
+                },
+                // Destino:
+                {
+                    "lat": destinoCoords[1], // Latitude
+                    "lon": destinoCoords[0]  // Longitude
+                }
+            ],
+            "out_arrays": ["distances", "times"], // Pedimos distâncias e tempos
+            "vehicle": "car" // Para carro
+        };
 
-        const response = await fetch(url);
+        const url = `https://graphhopper.com/api/1/matrix?key=${GRAPHOPPER_KEY}`;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            body: JSON.stringify(body),
+            headers: { 'Content-Type': 'application/json' }
+        });
         
         if (!response.ok) {
             const errorData = await response.json();
-            const errorMessage = errorData.message || "Erro desconhecido da API Mapbox";
-            console.error("Erro da API Mapbox:", errorMessage);
+            const errorMessage = errorData.message || "Erro desconhecido da API GraphHopper";
+            console.error("Erro da API GraphHopper:", errorMessage);
             throw new Error(`Erro da API de Rota: ${errorMessage}`);
         }
 
         const data = await response.json();
         
-        if (!data.routes || data.routes.length === 0) {
-            throw new Error("Não foi possível encontrar uma rota.");
+        // A resposta é uma matriz: [origem][destino]
+        const distanciaMetros = data.distances[0][1];
+        const duracaoSegundos = data.times[0][1];
+
+        if (distanciaMetros === undefined || duracaoSegundos === undefined) {
+            throw new Error("Não foi possível calcular a rota (distância/tempo).");
         }
 
-        const distanciaMetros = data.routes[0].distance;
-        const duracaoSegundos = data.routes[0].duration;
         const distanciaKM = distanciaMetros / 1000;
 
         const valorBase = distanciaKM * FRETE_TAXA_POR_KM;
