@@ -2,8 +2,8 @@
   SERVER.JS (TUDO-EM-UM)
   - Serve o seu site da pasta 'public'
   - Responde às chamadas de API
-  - Usa BrasilAPI (mais robusta)
-  - Gestão de erros melhorada (corrige o erro "Unexpected token")
+  - Usa BrasilAPI
+  - CORRIGIDO: Gestão de erro para não mostrar [object Object]
 */
 const express = require('express');
 const fetch = require('node-fetch');
@@ -18,7 +18,6 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- 2. AS CHAVES DE API ---
-// (Não precisamos de chave para a BrasilAPI)
 const OPENROUTE_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjVkOGZiYzQ5MTdhNzQyYTI5ZjU1N2YzMjdhMTA0ZmMwIiwiaCI6Im11cm11cjY0In0=';
 const FRETE_TAXA_POR_KM = 2.50;
 const FRETE_COORDENADAS_ORIGEM = [-47.49056581938401, -23.518172000706706];
@@ -79,22 +78,33 @@ app.post('/api/calcular-frete', async (req, res) => {
             }
         });
         
-        // **** GESTÃO DE ERRO CORRIGIDA ****
-        // Isto impede o erro "Unexpected token '<'"
+        // **** GESTÃO DE ERRO CORRIGIDA (para evitar [object Object]) ****
         if (!response.ok) {
             let errorBody = await response.text(); // 1. Lê o erro como texto
-            let errorMessage = errorBody;
+            let finalErrorMessage = errorBody; // Default é o texto
+
             try {
                 // 2. Tenta ler como JSON
-                const errorData = JSON.parse(errorBody); 
-                errorMessage = errorData?.error?.message || errorData?.error || errorData?.message || errorBody;
+                const errorData = JSON.parse(errorBody);
+                
+                // 3. Tenta encontrar a mensagem de erro específica (que seja uma string)
+                if (typeof errorData.error === 'string') {
+                    finalErrorMessage = errorData.error; // Formato: {"error": "..."}
+                } else if (errorData.error && typeof errorData.error.message === 'string') {
+                    finalErrorMessage = errorData.error.message; // Formato: {"error": {"message": "..."}}
+                } else if (typeof errorData.message === 'string') {
+                    finalErrorMessage = errorData.message; // Formato: {"message": "..."}
+                }
+                
             } catch (e) {
-                // 3. Se não for JSON, usa o texto (ex: "Not Found" ou um HTML)
-                errorMessage = errorBody;
+                // Não é JSON, `finalErrorMessage` já é o texto (ex: "Not Found")
             }
-            console.error("Erro da API OpenRoute:", errorMessage); // Log para o servidor
-            throw new Error(`Erro da API de Rota. A API disse: "${errorMessage}"`);
+            
+            console.error("Erro da API OpenRoute:", finalErrorMessage); // Log para o servidor
+            // Garante que estamos a enviar uma string
+            throw new Error(`Erro da API de Rota: ${finalErrorMessage}`);
         }
+        // **** FIM DA CORREÇÃO ****
 
         const data = await response.json();
         const distancia = data.distances[0][1];
@@ -104,8 +114,10 @@ app.post('/api/calcular-frete', async (req, res) => {
         const valorBase = distancia * FRETE_TAXA_POR_KM;
         let desconto = 0;
         let cupomAplicado = false;
-        if (cupom && cupom.toUpperCase() === 'DESCONTO10') {
-            desconto = valorBase * 0.10;
+        
+        // Lógica do Cupom (Corrigida para ignorar espaços)
+        if (cupom && cupom.replace(/\s/g, '').toUpperCase() === 'DESCONTO10') {
+            desconto = valorBase * 0.10; // 10% de desconto
             cupomAplicado = true;
         }
         const valorFinal = valorBase - desconto;
