@@ -1,6 +1,6 @@
-/* SCRIPT-FRETE.JS (CORRIGIDO)
-   - CORRIGIDO: Bug de "race condition" na Etapa 3.
-   - ADICIONADO: Feedback de carregamento (spinner) e desativação do botão "Continuar" durante a busca do CEP.
+/* SCRIPT-FRETE.JS (VERSÃO FINAL)
+   - CORRIGIDO: Bug de "race condition" na Etapa 3 (com spinner/botão desativado).
+   - CORRIGIDO: Validação para impedir que coordenadas nulas/inválidas da BrasilAPI causem o erro "Too few points".
 */
 
 // --- Variáveis Globais de Controle ---
@@ -186,7 +186,7 @@ function initCepSearch() {
     }
 }
 
-// **** FUNÇÃO CORRIGIDA (Adicionado estado de loading) ****
+// **** FUNÇÃO CORRIGIDA (Adicionado estado de loading e validação de 'null') ****
 async function fetchCep(cep) {
     const inputCepDestino = document.getElementById('cep-destino');
     const containerEndereco = document.getElementById('endereco-container');
@@ -197,17 +197,14 @@ async function fetchCep(cep) {
     const inputLat = document.getElementById('cep-lat');
     const inputLon = document.getElementById('cep-lon');
 
-    // Elementos para o estado de carregamento
     const btnContinuar = document.querySelector('.form-step[data-step="3"] .btn-next');
     const inputWrapper = inputCepDestino.closest('.input-wrapper');
 
     try {
-        // 1. Inicia o estado de carregamento
         if (btnContinuar) btnContinuar.disabled = true;
         if (inputWrapper) inputWrapper.classList.add('loading');
-        limparErroDo(inputCepDestino); // Limpa erros antigos
+        limparErroDo(inputCepDestino); 
 
-        // 2. Chama a API
         const response = await fetch(`/api/cep?cep=${cep}`);
         
         if (!response.ok) {
@@ -216,25 +213,33 @@ async function fetchCep(cep) {
         }
         const data = await response.json();
 
-        // 3. Preenche os campos (Sucesso)
+        // **** CORREÇÃO ****
+        // Valida se as coordenadas recebidas são válidas
+        const lat = data.latitude;
+        const lon = data.longitude;
+        
+        if (!lat || !lon || typeof lat !== 'number' || typeof lon !== 'number') {
+            console.error("BrasilAPI retornou coordenadas nulas ou inválidas.");
+            throw new Error('API não retornou coordenadas para este CEP.');
+        }
+        // **** FIM DA CORREÇÃO ****
+
         if(inputRua) inputRua.value = data.logradouro;
         if(inputCidade) inputCidade.value = data.cidade;
         if(inputEstado) inputEstado.value = data.estado;
-        if(inputLat) inputLat.value = data.latitude;
-        if(inputLon) inputLon.value = data.longitude;
+        if(inputLat) inputLat.value = lat; // Atribui a variável validada
+        if(inputLon) inputLon.value = lon; // Atribui a variável validada
         
         if(containerEndereco) containerEndereco.classList.add('show');
         if(inputNumero) inputNumero.focus();
 
     } catch (error) {
-        // 4. Trata o erro
         console.error("Erro na busca de CEP:", error);
         if(inputLat) inputLat.value = "";
         if(inputLon) inputLon.value = "";
         mostrarErro(inputCepDestino, error.message);
         if(containerEndereco) containerEndereco.classList.remove('show');
     } finally {
-        // 5. Termina o estado de carregamento (sempre)
         if (btnContinuar) btnContinuar.disabled = false;
         if (inputWrapper) inputWrapper.classList.remove('loading');
     }
