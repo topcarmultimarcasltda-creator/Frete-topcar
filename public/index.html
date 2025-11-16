@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cotação - TOPCAR</title> 
+    <link rel="stylesheet" href="style.css?v=5"> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="script-frete.js" defer></script>
+</head>
+<body>
+
+    <div class="bg-animation"></div>
+
+    <div id="simulador-container">
+        <header>
+             <a href="../PORTAL_TOPCAR/index.html" class="logo">TOPCAR <span>MULTIMARCAS</span></a>
+        </header>
+
+        <div id="progress-bar-container">
+            <div id="progress-bar"></div>
+            <div class="progress-step active" data-step="1"><i class="fa-solid fa-house"></i><span>Início</span></div>
+            <div class="progress-step" data-step="2"><i class="fa-solid fa-car-side"></i><span>Veículo</span></div>
+            <div class="progress-step" data-step="3"><i class="fa-solid fa-location-dot"></i><span>Destino</span></div>
+            <div class="progress-step" data-step="4"><i class="fa-solid fa-user-check"></i><span>Dados</span></div>
+        </div>
+
+        <form id="form-simulador" novalidate>
+            
+            <div class="form-step active" data-step="1">
+                <div class="hero-visual">
+                    <div class="icon-glow">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                    </div>
+                </div>
+                <h2 class="hero-titulo">Logística Premium</h2>
+                <p class="hero-subtitulo">
+                    Transporte de veículos com segurança, rastreio e o melhor prazo do mercado.
+                </p>
+                <div class="form-navigation center-nav">
+                    <button type="button" class="cta-button btn-next pulse-effect">
+                        Simular Frete Agora <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-step" data-step="2">
+                <h2 class="etapa-titulo">Selecione o Veículo</h2>
+                
+                <div class="grid-options">
+                    <label class="card-option">
+                        <input type="radio" name="veiculo-select" value="moto" onclick="selectVeiculo('moto')">
+                        <div class="card-content">
+                            <i class="fa-solid fa-motorcycle"></i>
+                            <span>Moto</span>
+                        </div>
+                    </label>
+                    <label class="card-option">
+                        <input type="radio" name="veiculo-select" value="pequeno" onclick="selectVeiculo('pequeno')">
+                        <div class="card-content">
+                            <i class="fa-solid fa-car-side"></i>
+                            <span>Pequeno</span>
+                        </div>
+                    </label>
+                    <label class="card-option">
+                        <input type="radio" name="veiculo-select" value="medio" onclick="selectVeiculo('medio')">
+                        <div class="card-content">
+                            <i class="fa-solid fa-car"></i>
+                            <span>Médio</span>
+                        </div>
+                    </label>
+                    <label class="card-option">
+                        <input type="radio" name="veiculo-select" value="grande" onclick="selectVeiculo('grande')">
+                        <div class="card-content">
+                            <i class="fa-solid fa-truck-pickup"></i>
+                            <span>Grande</span>
+                        </div>
+                    </label>
+                </div>
+
+                <select id="tipo-veiculo" style="display:none;">
+                    <option value=""></option>
+                    <option value="moto">Moto</option>
+                    <option value="pequeno">Carro Pequeno</option>
+                    <option value="medio">Carro Médio</option>
+                    <option value="grande">Carro Grande</option>
+                </select>
+                
+                <div class="form-navigation">
+                    <button type="button" class="btn-prev">Voltar</button>
+                    <button type="button" class="cta-button btn-next">Continuar</button>
+                </div>
+            </div>
+
+            <div class="form-step" data-step="3">
+                <h2 class="etapa-titulo">Qual o Destino?</h2>
+                
+                <div class="form-group floating-label">
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-magnifying-glass input-icon"></i>
+                        <input type="tel" id="cep-destino" placeholder=" " maxlength="9"> 
+                        <label for="cep-destino">CEP de Entrega</label>
+                        <div class="loading-spinner-input"></div>
+                    </div>
+                    <span class="error-message"></span>
+                </div>
+                
+                <input type="hidden" id="cep-lat">
+                <input type="hidden" id="cep-lon">
+
+                <div id="endereco-container" class="endereco-box collapsed">
+                    <div class="form-group">
+                        <input type="text" id="rua-destino" placeholder="Rua" readonly>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="text" id="cidade-destino" placeholder="Cidade" readonly>
+                        </div>
+                        <div class="form-group w-30">
+                            <input type="text" id="estado-destino" placeholder="UF" readonly>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group floating-label">
+                            <input type="tel" id="numero-destino" placeholder=" ">
+                            <label>Número</label>
+                        </div>
+                        <div class="form-group floating-label">
+                            <input type="text" id="complemento-destino" placeholder=" ">
+                            <label>Complemento</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-navigation">
+                    <button type="button" class="btn-prev">Voltar</button>
+                    <button type="button" class="cta-button btn-next">Continuar</button>
+                </div>
+            </div>
+
+            <div class="form-step" data-step="4">
+                <h2 class="etapa-titulo">Finalizar Simulação</h2>
+
+                <div class="form-group floating-label">
+                    <div class="input-wrapper">
+                        <i class="fa-regular fa-user input-icon"></i>
+                        <input type="text" id="nome-cliente" placeholder=" ">
+                        <label for="nome-cliente">Seu Nome Completo</label>
+                    </div>
+                </div>
+
+                <div class="form-group floating-label">
+                    <div class="input-wrapper">
+                        <i class="fa-brands fa-whatsapp input-icon"></i>
+                        <input type="tel" id="telefone-cliente" placeholder=" ">
+                        <label for="telefone-cliente">WhatsApp para Contato</label>
+                    </div>
+                </div>
+
+                <div class="cupom-section">
+                    <div class="form-group floating-label">
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-ticket input-icon"></i>
+                            <input type="text" id="cupom-desconto" placeholder=" ">
+                            <label for="cupom-desconto">Cupom (Opcional)</label>
+                        </div>
+                    </div>
+                    <span class="cupom-feedback-message"></span> 
+                </div>
+
+                <div class="form-navigation">
+                    <button type="button" class="btn-prev">Voltar</button>
+                    <button type="submit" class="cta-button finish" id="btn-submit-form">
+                        <span class="btn-text">Ver Preço e Prazo</span>
+                        <i class="fa-solid fa-circle-notch fa-spin btn-loader"></i>
+                    </button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+    <div id="approval-modal">
+        <div class="modal-overlay"></div>
+        
+        <div id="loading-state" class="modal-card">
+            <div class="radar-spinner"></div>
+            <h3>Calculando Logística...</h3>
+            <p>Analisando rotas e disponibilidade.</p>
+        </div>
+
+        <div id="approved-state" class="ticket-card" style="display: none;">
+            <div class="confetti-container"></div>
+            
+            <div class="ticket-header">
+                <div class="success-badge"><i class="fa-solid fa-check"></i></div>
+                <h2>Cotação Aprovada</h2>
+                <p>Oferta válida por 24 horas</p>
+            </div>
+
+            <div class="ticket-body">
+                <div class="route-display">
+                    <div class="point">
+                        <div class="dot origin"></div>
+                        <span class="city-code">LOJA</span>
+                        <span class="city-name">Sorocaba/SP</span>
+                    </div>
+                    <div class="connector">
+                        <i class="fa-solid fa-truck-fast truck-anim"></i>
+                        <div class="line"></div>
+                    </div>
+                    <div class="point">
+                        <div class="dot dest"></div>
+                        <span class="city-code">DST</span>
+                        <span class="city-name" id="cidade-resumo">Destino</span>
+                    </div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="label">Veículo</span>
+                        <span class="value" id="veiculo-final-display">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Prazo Est.</span>
+                        <span class="value" id="prazo-final-display">-</span>
+                    </div>
+                </div>
+
+                <div class="divider-dashed"></div>
+
+                <div class="price-section">
+                    <div class="row-price sub" id="base-price-li">
+                        <span>Valor Tabela</span>
+                        <span id="base-final-display">R$ 0,00</span>
+                    </div>
+                    <div class="row-price discount" id="desconto-final-li" style="display:none;">
+                        <span>Desconto</span>
+                        <span id="desconto-final-display">- R$ 0,00</span>
+                    </div>
+                    <div class="row-price total">
+                        <span>TOTAL</span>
+                        <span id="total-final-display">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ticket-footer">
+                <a href="#" class="btn-whatsapp-final" id="btn-whatsapp-final">
+                    <i class="fa-brands fa-whatsapp"></i> Reservar Agora
+                </a>
+                <button class="btn-close-modal" onclick="closeModal()">Fechar</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
