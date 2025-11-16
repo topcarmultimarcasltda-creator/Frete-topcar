@@ -277,6 +277,14 @@ input:focus ~ .input-icon { color: var(--primary); }
 .cta-button.loading .btn-text { display: none; }
 .cta-button.loading .btn-loader { display: block; }
 
+/* Desativar botões */
+.cta-button:disabled {
+    background: #555;
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
 /* Pulse Effect */
 .pulse-effect { animation: btnPulse 2s infinite; }
 @keyframes btnPulse {
@@ -419,4 +427,33 @@ input:focus ~ .input-icon { color: var(--primary); }
     .grid-options { grid-template-columns: 1fr 1fr; gap: 10px; }
     .card-option .card-content { padding: 15px 5px; }
     .cta-button { padding: 14px 20px; }
+}
+
+
+/* --- ADICIONAR ESTILOS PARA O SPINNER DO CEP --- */
+
+/* O spinner (escondido por defeito) */
+.loading-spinner-input {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+/* Oculta o ícone de lupa quando o spinner estiver ativo */
+.input-wrapper.loading .input-icon {
+    opacity: 0;
+}
+
+/* Mostra o spinner quando a classe .loading é adicionada */
+.input-wrapper.loading .loading-spinner-input {
+    opacity: 1;
 }

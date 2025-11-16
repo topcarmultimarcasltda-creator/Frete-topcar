@@ -1,6 +1,6 @@
-/* SCRIPT-FRETE.JS ATUALIZADO
-   - Aponta para o caminho relativo (/api/...) 
-   - Corrigido bug de "race condition" na validação da Etapa 3.
+/* SCRIPT-FRETE.JS (CORRIGIDO)
+   - CORRIGIDO: Bug de "race condition" na Etapa 3.
+   - ADICIONADO: Feedback de carregamento (spinner) e desativação do botão "Continuar" durante a busca do CEP.
 */
 
 // --- Variáveis Globais de Controle ---
@@ -186,6 +186,7 @@ function initCepSearch() {
     }
 }
 
+// **** FUNÇÃO CORRIGIDA (Adicionado estado de loading) ****
 async function fetchCep(cep) {
     const inputCepDestino = document.getElementById('cep-destino');
     const containerEndereco = document.getElementById('endereco-container');
@@ -196,9 +197,17 @@ async function fetchCep(cep) {
     const inputLat = document.getElementById('cep-lat');
     const inputLon = document.getElementById('cep-lon');
 
+    // Elementos para o estado de carregamento
+    const btnContinuar = document.querySelector('.form-step[data-step="3"] .btn-next');
+    const inputWrapper = inputCepDestino.closest('.input-wrapper');
+
     try {
-        // **** URL ATUALIZADA ****
-        // Removemos o "http://localhost:3000"
+        // 1. Inicia o estado de carregamento
+        if (btnContinuar) btnContinuar.disabled = true;
+        if (inputWrapper) inputWrapper.classList.add('loading');
+        limparErroDo(inputCepDestino); // Limpa erros antigos
+
+        // 2. Chama a API
         const response = await fetch(`/api/cep?cep=${cep}`);
         
         if (!response.ok) {
@@ -207,6 +216,7 @@ async function fetchCep(cep) {
         }
         const data = await response.json();
 
+        // 3. Preenche os campos (Sucesso)
         if(inputRua) inputRua.value = data.logradouro;
         if(inputCidade) inputCidade.value = data.cidade;
         if(inputEstado) inputEstado.value = data.estado;
@@ -214,15 +224,19 @@ async function fetchCep(cep) {
         if(inputLon) inputLon.value = data.longitude;
         
         if(containerEndereco) containerEndereco.classList.add('show');
-        limparErroDo(inputCepDestino);
         if(inputNumero) inputNumero.focus();
 
     } catch (error) {
+        // 4. Trata o erro
         console.error("Erro na busca de CEP:", error);
         if(inputLat) inputLat.value = "";
         if(inputLon) inputLon.value = "";
         mostrarErro(inputCepDestino, error.message);
         if(containerEndereco) containerEndereco.classList.remove('show');
+    } finally {
+        // 5. Termina o estado de carregamento (sempre)
+        if (btnContinuar) btnContinuar.disabled = false;
+        if (inputWrapper) inputWrapper.classList.remove('loading');
     }
 }
 
@@ -256,8 +270,6 @@ async function initFormSubmit() {
                 const veiculo = document.getElementById('tipo-veiculo').value;
                 const destino = `${document.getElementById('cidade-destino').value}/${document.getElementById('estado-destino').value}`;
 
-                // **** URL ATUALIZADA ****
-                // Removemos o "http://localhost:3000"
                 const response = await fetch('/api/calcular-frete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -329,7 +341,7 @@ function populateModalWithQuote(quote) {
     const btnWhats = document.getElementById('btn-whatsapp-final');
     if(btnWhats) {
         const text = `Olá! Fiz uma cotação no site TOPCAR.\nVeículo: ${quote.veiculo}\nDestino: ${quote.destino}\nValor: ${quote.valorFinal}`;
-        btnWhats.href = `https://wa.me/5515996452232?text=${encodeURIComponent(text)}`;
+        btnWhats.href = `https://wa.me/551596452232?text=${encodeURIComponent(text)}`;
     }
 }
 
