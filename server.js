@@ -2,7 +2,7 @@
   SERVER.JS (TUDO-EM-UM)
   - Serve o seu site da pasta 'public'
   - Responde às chamadas de API
-  - Suas chaves já estão aqui.
+  - CORRIGIDA A CHAVE OPENROUTE_KEY
 */
 const express = require('express');
 const fetch = require('node-fetch');
@@ -14,12 +14,12 @@ app.use(cors());
 app.use(express.json());
 
 // --- 1. SERVIR O FRONTEND ---
-// Diz ao Express para servir os ficheiros estáticos (HTML, CSS, JS) da pasta "public"
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- 2. AS CHAVES DE API ---
 const CEPABERTO_TOKEN = '1266645890454565003a29a7e0c2b08c';
-const OPENROUTE_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjVkOGZiYzQ5MTdhNzQyYTI5ZjU1N2YzMjdhMTA0ZmMwIiwiaCI6Im11cm11cjYyNDgifQ=='; // (A sua chave do OpenRoute)
+// **** CHAVE CORRIGIDA ****
+const OPENROUTE_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjVkOGZiYzQ5MTdhNzQyYTI5ZjU1N2YzMjdhMTA0ZmMwIiwiaCI6Im11cm11cjY0In0=';
 const FRETE_TAXA_POR_KM = 2.50;
 const FRETE_COORDENADAS_ORIGEM = [-47.49056581938401, -23.518172000706706];
 
@@ -70,10 +70,15 @@ app.post('/api/calcular-frete', async (req, res) => {
                 'Authorization': OPENROUTE_KEY
             }
         });
+        
+        // **** GESTÃO DE ERRO MELHORADA ****
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(`Erro da API de Rota: ${errorData.error.message}`);
+            console.error("Erro da API OpenRoute:", errorData); // Log para o servidor
+            const errorMessage = errorData?.error?.message || errorData?.error || errorData?.message || "Erro desconhecido da API";
+            throw new Error(`Erro da API de Rota: ${errorMessage}`);
         }
+
         const data = await response.json();
         const distancia = data.distances[0][1];
         const duracaoSegundos = data.durations[0][1];
@@ -103,8 +108,6 @@ app.post('/api/calcular-frete', async (req, res) => {
 });
 
 // --- 4. ROTA PRINCIPAL (Servir o index.html) ---
-// (Esta é a correção. Tem de vir DEPOIS das suas rotas de API)
-// Qualquer pedido GET que não seja para a API, envia o index.html
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
