@@ -3,7 +3,7 @@
   - Versão SEGURA (lê do Environment)
   - Usa BrasilAPI (para CEPs)
   - Usa GRAPHOPPER (para Distância)
-  - *** CORRIGIDO ERRO DE SINTAXE QUE CRASHAVA O SERVIDOR ***
+  - *** CORRIGIDO: Formato de pedido para a GraphHopper API ***
 */
 const express = require('express');
 const fetch = require('node-fetch');
@@ -48,7 +48,7 @@ app.get('/api/cep', async (req, res) => {
     }
 });
 
-/* Endpoint 2: Cálculo de Frete (*** CORRIGIDO O BUG DE SINTAXE ***) */
+/* Endpoint 2: Cálculo de Frete (*** FORMATO CORRIGIDO ***) */
 app.post('/api/calcular-frete', async (req, res) => {
     const { destinoCoords, cupom } = req.body; // Vem como [Lon, Lat]
     
@@ -57,26 +57,19 @@ app.post('/api/calcular-frete', async (req, res) => {
     }
 
     try {
-        // O GraphHopper Matrix API usa POST e espera formato { "locations": [...] }
+        // **** CORREÇÃO ****
+        // Vamos usar o formato "points" que é mais simples e direto.
+        // O formato [Lon, Lat] que o cliente envia é o que o GraphHopper espera.
         const body = {
-            "locations": [
-                // Origem: Note que o GraphHopper quer {lat: ..., lon: ...}
-                {
-                    "lat": FRETE_COORDENADAS_ORIGEM[1], // Latitude
-                    "lon": FRETE_COORDENADAS_ORIGEM[0]  // Longitude
-                },
-                // Destino:
-                {
-                    "lat": destinoCoords[1], // Latitude
-                    "lon": destinoCoords[0]  // Longitude
-                }
+            "points": [
+                FRETE_COORDENADAS_ORIGEM, // Ponto de Origem [Lon, Lat]
+                destinoCoords             // Ponto de Destino [Lon, Lat]
             ],
             "out_arrays": ["distances", "times"], // Pedimos distâncias e tempos
             "vehicle": "car" // Para carro
         };
+        // **** FIM DA CORREÇÃO ****
 
-        // **** CORREÇÃO ESTÁ AQUI ****
-        // A linha anterior estava mal escrita (sem `) e crashava o servidor
         const url = `https://graphhopper.com/api/1/matrix?key=${GRAPHOPPER_KEY}`;
 
         const response = await fetch(url, {
