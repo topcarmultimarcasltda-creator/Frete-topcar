@@ -2,7 +2,7 @@
   SERVER.JS (TUDO-EM-UM)
   - Serve o seu site da pasta 'public'
   - Responde às chamadas de API
-  - CORRIGIDA A CHAVE OPENROUTE_KEY
+  - CORRIGIDA A CHAVE OPENROUTE_KEY (3ª tentativa!)
 */
 const express = require('express');
 const fetch = require('node-fetch');
@@ -18,7 +18,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // --- 2. AS CHAVES DE API ---
 const CEPABERTO_TOKEN = '1266645890454565003a29a7e0c2b08c';
-// **** CHAVE CORRIGIDA ****
+// **** CHAVE CORRIGIDA (AGORA SIM!) ****
 const OPENROUTE_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjVkOGZiYzQ5MTdhNzQyYTI5ZjU1N2YzMjdhMTA0ZmMwIiwiaCI6Im11cm11cjY0In0=';
 const FRETE_TAXA_POR_KM = 2.50;
 const FRETE_COORDENADAS_ORIGEM = [-47.49056581938401, -23.518172000706706];
@@ -72,10 +72,20 @@ app.post('/api/calcular-frete', async (req, res) => {
         });
         
         // **** GESTÃO DE ERRO MELHORADA ****
+        // Se a API externa (OpenRoute) falhar, tentamos ler o erro como JSON
+        // Se falhar (como aconteceu consigo, "Not Found"), lemos como texto
         if (!response.ok) {
-            const errorData = await response.json();
-            console.error("Erro da API OpenRoute:", errorData); // Log para o servidor
-            const errorMessage = errorData?.error?.message || errorData?.error || errorData?.message || "Erro desconhecido da API";
+            let errorBody = await response.text(); // Ler como texto primeiro
+            let errorMessage = errorBody;
+            try {
+                // Tentar converter para JSON
+                const errorData = JSON.parse(errorBody); 
+                errorMessage = errorData?.error?.message || errorData?.error || errorData?.message || errorBody;
+            } catch (e) {
+                // Se não for JSON (ex: "Not Found"), usamos o texto
+                errorMessage = errorBody;
+            }
+            console.error("Erro da API OpenRoute:", errorMessage); // Log para o servidor
             throw new Error(`Erro da API de Rota: ${errorMessage}`);
         }
 
