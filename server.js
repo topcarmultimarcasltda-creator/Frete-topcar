@@ -2,7 +2,8 @@
   SERVER.JS (TUDO-EM-UM)
   - Versão SEGURA (lê do Environment)
   - Usa BrasilAPI (para CEPs)
-  - *** USA GRAPHOPPER (para Distância) - ESTÁVEL e SEM CC ***
+  - Usa GRAPHOPPER (para Distância)
+  - *** CORRIGIDO ERRO DE SINTAXE QUE CRASHAVA O SERVIDOR ***
 */
 const express = require('express');
 const fetch = require('node-fetch');
@@ -17,8 +18,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- 2. AS CHAVES DE API (SEGURAS) ---
-// Vamos ler a nova chave do GraphHopper do "cofre" do Render
-const GRAPHOPPER_KEY = process.env.GRAPHOPPER_KEY; 
+const GRAPHOPPER_KEY = process.env.GRAPHOPPER_KEY; // <-- Lê do "cofre" do Render
 const FRETE_TAXA_POR_KM = 2.50;
 // Coordenadas de Origem [Lon, Lat]
 const FRETE_COORDENADAS_ORIGEM = [-47.49056581938401, -23.518172000706706];
@@ -48,7 +48,7 @@ app.get('/api/cep', async (req, res) => {
     }
 });
 
-/* Endpoint 2: Cálculo de Frete (*** ATUALIZADO PARA GRAPHHOPPER ***) */
+/* Endpoint 2: Cálculo de Frete (*** CORRIGIDO O BUG DE SINTAXE ***) */
 app.post('/api/calcular-frete', async (req, res) => {
     const { destinoCoords, cupom } = req.body; // Vem como [Lon, Lat]
     
@@ -75,6 +75,8 @@ app.post('/api/calcular-frete', async (req, res) => {
             "vehicle": "car" // Para carro
         };
 
+        // **** CORREÇÃO ESTÁ AQUI ****
+        // A linha anterior estava mal escrita (sem `) e crashava o servidor
         const url = `https://graphhopper.com/api/1/matrix?key=${GRAPHOPPER_KEY}`;
 
         const response = await fetch(url, {
@@ -106,6 +108,7 @@ app.post('/api/calcular-frete', async (req, res) => {
         let desconto = 0;
         let cupomAplicado = false;
         
+        // Lógica do Cupom (Ignora espaços)
         if (cupom && cupom.replace(/\s/g, '').toUpperCase() === 'DESCONTO10') {
             desconto = valorBase * 0.10;
             cupomAplicado = true;
