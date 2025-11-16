@@ -1,8 +1,8 @@
 /*
   SERVER.JS (TUDO-EM-UM)
   - Versão SEGURA (lê do Environment)
-  - Usa BrasilAPI
-  - *** ADICIONADO: DEBUG PARA MOSTRAR A CHAVE EM USO ***
+  - Usa BrasilAPI (para CEPs)
+  - *** USA MAPBOX (para Distância) - MAIS ESTÁVEL ***
 */
 const express = require('express');
 const fetch = require('node-fetch');
@@ -17,7 +17,8 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- 2. AS CHAVES DE API (SEGURAS) ---
-const OPENROUTE_KEY = process.env.OPENROUTE_KEY; // <-- Lê do "cofre" do Render
+// Vamos ler a nova chave do Mapbox do "cofre" do Render
+const MAPBOX_KEY = process.env.MAPBOX_KEY; 
 const FRETE_TAXA_POR_KM = 2.50;
 const FRETE_COORDENADAS_ORIGEM = [-47.49056581938401, -23.518172000706706];
 
@@ -25,7 +26,7 @@ const FRETE_COORDENADAS_ORIGEM = [-47.49056581938401, -23.518172000706706];
 
 /* Endpoint 1: Busca de CEP (Usando BrasilAPI) */
 app.get('/api/cep', async (req, res) => {
-    const cep = req.query.cep.replace(/\D/g, ''); // Limpa o CEP
+    const cep = req.query.cep.replace(/\D/g, ''); 
     if (!cep || cep.length !== 8) return res.status(400).json({ error: 'CEP inválido' });
 
     try {
@@ -46,62 +47,44 @@ app.get('/api/cep', async (req, res) => {
     }
 });
 
-/* Endpoint 2: Cálculo de Frete */
+/* Endpoint 2: Cálculo de Frete (*** ATUALIZADO PARA MAPBOX ***) */
 app.post('/api/calcular-frete', async (req, res) => {
     const { destinoCoords, cupom } = req.body; 
     
-    if (!OPENROUTE_KEY) {
-        return res.status(500).json({ error: 'Erro de servidor: Chave de API não configurada.' });
+    if (!MAPBOX_KEY) {
+        return res.status(500).json({ error: 'Erro de servidor: Chave de API (Mapbox) não configurada.' });
     }
 
     try {
-        const body = {
-            "locations": [FRETE_COORDENADAS_ORIGEM, destinoCoords],
-            "metrics": ["distance", "duration"], "units": "km"
-        };
-        const response = await fetch("https://api.openrouteservice.org/v2/matrix/driving-car", {
-            method: 'POST',
-            body: JSON.stringify(body),
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'Authorization': OPENROUTE_KEY 
-            }
-        });
+        // O formato do Mapbox é: /mapbox/driving/lon,lat;lon,lat
+        const origemLonLat = `${FRETE_COORDENADAS_ORIGEM[0]},${FRETE_COORDENADAS_ORIGEM[1]}`;
+        const destinoLonLat = `${destinoCoords[0]},${destinoCoords[1]}`;
         
-        // **** DEBUG ADICIONADO AQUI ****
-        if (!response.ok) {
-            let errorBody = await response.text();
-            let finalErrorMessage = errorBody;
-            try {
-                const errorData = JSON.parse(errorBody);
-                if (typeof errorData.error === 'string') finalErrorMessage = errorData.error;
-                else if (errorData.error && typeof errorData.error.message === 'string') finalErrorMessage = errorData.error.message;
-                else if (typeof errorData.message === 'string') finalErrorMessage = errorData.message;
-            } catch (e) {
-                // Não é JSON
-            }
-            
-            // Pega os últimos 10 dígitos da chave que o Render está a usar
-            const keyInUse = OPENROUTE_KEY || "CHAVE_NAO_ENCONTRADA";
-            const partialKey = keyInUse.substring(keyInUse.length - 10);
+        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origemLonLat};${destinoLonLat}?access_token=${MAPBOX_KEY}`;
 
-            console.error("Erro da API OpenRoute:", finalErrorMessage);
-            // Envia a mensagem de erro E os últimos dígitos da chave
-            throw new Error(`Erro: ${finalErrorMessage}. (Debug: Chave usada termina em ...${partialKey})`);
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            const errorMessage = errorData.message || "Erro desconhecido da API Mapbox";
+            console.error("Erro da API Mapbox:", errorMessage);
+            throw new Error(`Erro da API de Rota: ${errorMessage}`);
         }
-        // **** FIM DO DEBUG ****
 
         const data = await response.json();
-        const distancia = data.distances[0][1];
-        const duracaoSegundos = data.durations[0][1];
-        if (distancia === undefined || duracaoSegundos === undefined) throw new Error("Resposta da API de Rota inválida.");
+        
+        if (!data.routes || data.routes.length === 0) {
+            throw new Error("Não foi possível encontrar uma rota.");
+        }
 
-        const valorBase = distancia * FRETE_TAXA_POR_KM;
+        const distanciaMetros = data.routes[0].distance;
+        const duracaoSegundos = data.routes[0].duration;
+        const distanciaKM = distanciaMetros / 1000;
+
+        const valorBase = distanciaKM * FRETE_TAXA_POR_KM;
         let desconto = 0;
         let cupomAplicado = false;
         
-        // Lógica do Cupom (Corrigida para ignorar espaços)
         if (cupom && cupom.replace(/\s/g, '').toUpperCase() === 'DESCONTO10') {
             desconto = valorBase * 0.10;
             cupomAplicado = true;
