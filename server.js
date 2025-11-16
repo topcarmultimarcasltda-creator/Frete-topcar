@@ -20,8 +20,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 // --- 2. AS CHAVES DE API (SEGURAS) ---
 const GRAPHOPPER_KEY = process.env.GRAPHOPPER_KEY; // <-- Lê do "cofre" do Render
 const FRETE_TAXA_POR_KM = 2.50;
-// Coordenadas de Origem [Lon, Lat]
-const FRETE_COORDENADAS_ORIGEM = [-47.49056581938401, -23.518172000706706];
+
+// Lê as coordenadas de origem do "cofre" do Render para segurança
+// Valor Padrão: [-47.49056581938401, -23.518172000706706]
+const COORD_ORIGEM_STRING = process.env.COORD_ORIGEM || "-47.49056581938401,-23.518172000706706";
+const FRETE_COORDENADAS_ORIGEM = COORD_ORIGEM_STRING.split(',').map(Number); // Converte [Lon, Lat]
 
 // --- 3. AS APIs (O "ASSISTENTE") ---
 
